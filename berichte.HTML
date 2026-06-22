@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Berichtsheft</title>
+<script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d1520; --surface: rgba(255,255,255,0.04); --surface2: rgba(255,255,255,0.07);
+    --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
+    --text: #e2e8f0; --muted: #64748b; --dim: #94a3b8;
+    --accent: #3b82f6; --accent-l: #93c5fd; --accent-bg: rgba(59,130,246,0.12); --accent-b: rgba(59,130,246,0.3);
+    --purple: #8b5cf6; --purple-bg: rgba(139,92,246,0.12); --purple-b: rgba(139,92,246,0.3);
+    --green: #10b981; --green-bg: rgba(16,185,129,0.1); --green-b: rgba(16,185,129,0.3);
+    --red: #ef4444; --red-bg: rgba(239,68,68,0.1);
+  }
+  body { background: linear-gradient(160deg, var(--bg) 0%, #111d2e 100%); color: var(--text); font-family: 'Segoe UI', Arial, sans-serif; min-height: 100vh; }
+  #header { background: rgba(0,0,0,0.35); border-bottom: 1px solid var(--border); padding: 0 28px; display: flex; align-items: center; height: 56px; gap: 14px; position: sticky; top: 0; z-index: 50; backdrop-filter: blur(12px); }
+  .logo { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--purple)); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; color: #fff; flex-shrink: 0; }
+  .app-title { font-weight: 700; font-size: 16px; }
+  .nav { display: flex; gap: 4px; margin-left: 8px; }
+  .nav-btn { padding: 4px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid transparent; background: transparent; color: var(--dim); transition: all 0.15s; font-family: inherit; }
+  .nav-btn.active, .nav-btn:hover { border-color: var(--accent-b); background: var(--accent-bg); color: var(--accent-l); }
+  .header-info { margin-left: auto; font-size: 12px; color: var(--muted); }
+  #app { max-width: 860px; margin: 0 auto; padding: 32px 20px 80px; }
+  .view { display: none; } .view.active { display: block; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px 24px; margin-bottom: 16px; }
+  .card-hover { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 22px; margin-bottom: 10px; cursor: pointer; transition: background 0.15s; }
+  .card-hover:hover { background: var(--surface2); }
+  .section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 14px; }
+  label { font-size: 12px; color: var(--dim); margin-bottom: 5px; display: block; font-weight: 500; }
+  h1 { font-size: 22px; font-weight: 700; }
+  input[type=text], input[type=date], input[type=number], textarea {
+    width: 100%; background: rgba(255,255,255,0.06); border: 1px solid var(--border2);
+    border-radius: 7px; padding: 9px 12px; font-size: 14px; color: var(--text); outline: none;
+    font-family: inherit; color-scheme: dark;
+  }
+  input::placeholder, textarea::placeholder { color: #374151; }
+  textarea { resize: vertical; line-height: 1.6; }
+  .note-textarea { font-size: 13px; color: #cbd5e1; min-height: 80px; }
+  .small-input { font-size: 12px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; font-family: inherit; transition: opacity 0.15s; }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--purple)); color: #fff; box-shadow: 0 3px 12px rgba(59,130,246,0.25); }
+  .btn-secondary { background: var(--surface); border: 1px solid var(--border2); color: var(--dim); font-size: 13px; }
+  .btn-green { background: var(--green-bg); border: 1px solid var(--green-b); color: var(--green); font-size: 13px; }
+  .btn-ghost { padding: 5px 12px; border-radius: 6px; font-size: 12px; background: transparent; border: 1px solid var(--border); color: var(--muted); cursor: pointer; font-family: inherit; }
+  .btn-red { border: 1px solid rgba(239,68,68,0.2) !important; color: var(--red) !important; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-blue { background: var(--accent-bg); border: 1px solid var(--accent-b); color: var(--accent-l); }
+  .badge-green { background: var(--green-bg); border: 1px solid var(--green-b); color: var(--green); }
+  .badge-purple { background: var(--purple-bg); border: 1px solid var(--purple-b); color: #c4b5fd; }
+  .error-box { background: var(--red-bg); border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; padding: 10px 16px; color: #fca5a5; font-size: 13px; margin-bottom: 14px; }
+  .day-row { border-radius: 10px; padding: 16px; margin-bottom: 10px; border: 1px solid var(--border); background: rgba(255,255,255,0.025); }
+  .day-row.school { border-left: 3px solid var(--purple); }
+  .day-row.work { border-left: 3px solid var(--accent); }
+  .day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .day-name { font-weight: 700; font-size: 14px; }
+  .day-date { font-size: 12px; color: var(--muted); margin-left: 8px; }
+  .report-row { display: flex; align-items: center; gap: 12px; }
+  .report-num-badge { width: 44px; height: 44px; border-radius: 10px; background: linear-gradient(135deg, rgba(59,130,246,0.13), rgba(139,92,246,0.13)); border: 1px solid var(--accent-b); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .report-num-badge span { font-weight: 800; font-size: 15px; color: var(--accent-l); }
+  .report-info { flex: 1; }
+  .report-title { font-weight: 600; font-size: 15px; }
+  .report-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .report-actions { display: flex; gap: 8px; align-items: center; }
+  .empty { text-align: center; padding: 48px 24px; }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .empty-sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.2); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+  .editor-topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+  .editor-topbar h1 { flex: 1; }
+  .editor-topbar .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div class="logo">B</div>
+  <span class="app-title">Berichtsheft</span>
+  <nav class="nav">
+    <button class="nav-btn active" onclick="showView('overview')">Übersicht</button>
+    <button class="nav-btn" onclick="newReport()">+ Neue Woche</button>
+    <button class="nav-btn" onclick="showView('settings')">Einstellungen</button>
+  </nav>
+  <div class="header-info" id="header-info">0 Einträge</div>
+</div>
+
+<div id="app">
+
+  <!-- OVERVIEW -->
+  <div class="view active" id="view-overview">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:28px">
+      <div>
+        <h1>Alle Einträge</h1>
+        <p id="overview-count" style="color:var(--muted);font-size:13px;margin-top:4px">0 Ausbildungsnachweise</p>
+      </div>
+      <button class="btn btn-primary" onclick="newReport()">+ Neue Woche</button>
+    </div>
+    <div id="overview-list"></div>
+  </div>
+
+  <!-- EDITOR -->
+  <div class="view" id="view-editor">
+    <div class="editor-topbar">
+      <button class="btn btn-secondary" onclick="showView('overview')">← Zurück</button>
+      <div style="flex:1">
+        <h1 id="editor-title">Ausbildungsnachweis</h1>
+        <div class="meta" id="editor-meta"></div>
+      </div>
+      <button class="btn btn-green" onclick="saveCurrentReport()" id="save-btn">Speichern</button>
+      <button class="btn btn-secondary" onclick="exportPDF()">🖨 PDF</button>
+      <button class="btn btn-primary" id="docx-btn" onclick="exportDOCX()">↓ .docx</button>
+    </div>
+
+    <div id="editor-error" class="error-box" style="display:none"></div>
+
+    <div class="card">
+      <div class="section-label">Persönliche Daten</div>
+      <div class="grid-3">
+        <div><label>Name, Vorname</label><input type="text" id="e-name"></div>
+        <div><label>Ausbildungsjahr / Jahr</label><input type="text" id="e-year" placeholder="z.B. Erstes / 2026"></div>
+        <div><label>Wochenbeginn (Montag)</label><input type="date" id="e-monday" onchange="updateEditorMeta()"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-label" style="margin-bottom:16px">Tätigkeiten — Stichpunkte eintragen</div>
+      <div id="days-container"></div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-secondary" onclick="exportPDF()">🖨 Drucken / PDF</button>
+      <button class="btn btn-primary" id="docx-btn2" onclick="exportDOCX()">↓ Als Word exportieren</button>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="view" id="view-settings">
+    <h1 style="margin-bottom:24px">Einstellungen</h1>
+    <div class="card">
+      <div class="section-label">Standardwerte</div>
+      <div class="grid-2" style="margin-bottom:14px">
+        <div><label>Name, Vorname</label><input type="text" id="s-name"></div>
+        <div><label>Ausbildungsjahr / Jahr</label><input type="text" id="s-year" placeholder="z.B. Erstes / 2026"></div>
+      </div>
+      <div style="max-width:300px;margin-bottom:16px">
+        <label>Letzte Nummer (nächste Woche wird +1)</label>
+        <input type="number" id="s-last-num" min="0">
+      </div>
+      <div class="section-label" style="margin-top:20px">Standard-Lernorte</div>
+      <div id="s-locations"></div>
+      <button class="btn btn-primary" onclick="saveSettings()" style="margin-top:16px" id="settings-save-btn">Speichern</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const STORAGE_KEY = 'berichtsheft_v4';
+const DAY_LABELS  = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag'];
+const SCHOOL_DAYS = [2, 4];
+const DEFAULT_LOCS = [
+  'AXA\nKöln Holweide\nColonia-Allee 10-20\n51067 Köln',
+  'AXA\nKöln Holweide\nColonia-Allee 10-20\n51067 Köln',
+  'Erich Gutenberg\nBerufskolleg\nModemannstraße\n51065 Köln',
+  'AXA\nKöln Holweide\nColonia-Allee 10-20\n51067 Köln',
+  'Erich Gutenberg\nBerufskolleg\nModemannstraße\n51065 Köln',
+];
+
+function loadData() {
+  try {
+    const r = localStorage.getItem(STORAGE_KEY);
+    if (!r) return { 
+      reports: [], 
+      settings: { 
+        name: '', 
+        year: '', 
+        lastNumber:'', 
+        locations: [...DEFAULT_LOCS] 
+      } 
+    };
+    return JSON.parse(r);
+  } catch { 
+    return { 
+      reports: [], 
+      settings: { name: '', year: '', lastNumber: 0, locations: [...DEFAULT_LOCS] } 
+    }; 
+  }
+}
+
+function saveData() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appData)); } catch {} }
+let appData = loadData();
+let currentId = null;
+
+function getMonday(s) { const d=new Date(s+'T00:00:00'); const day=d.getDay()||7; d.setDate(d.getDate()-day+1); return d; }
+function toISO(d)      { return d.toISOString().slice(0,10); }
+function todayMonday() { return toISO(getMonday(toISO(new Date()))); }
+function weekDates(startStr) {
+  const startDate = new Date(startStr + 'T00:00:00');
+  return Array.from({ length: 5 }, (_, i) => {
+    const d = new Date(startDate);
+    d.setDate(startDate.getDate() + i);
+    return d;
+  });
+}
+
+function fmtDE(d)      { return d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+function fmtShort(d)   { return d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'}); }
+function getKW(s)      { const d=new Date(getMonday(s)); d.setDate(d.getDate()+4-(d.getDay()||7)); const y=new Date(d.getFullYear(),0,1); return Math.ceil((((d-y)/86400000)+1)/7); }
+function getMonthNum(d){ return d.getMonth()+1; }
+function getYear(d)    { return d.getFullYear(); }
+function escHtml(s)    { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',['overview','','settings'][i]===name));
+  if(name==='overview') renderOverview();
+  if(name==='settings') renderSettings();
+  updateHeaderInfo();
+}
+function updateHeaderInfo() {
+  document.getElementById('header-info').textContent=`${appData.reports.length} Einträge · letzte Nr. ${appData.settings.lastNumber}`;
+}
+function renderOverview() {
+  const list=document.getElementById('overview-list');
+  document.getElementById('overview-count').textContent=`${appData.reports.length} Ausbildungsnachweise gespeichert`;
+  if(!appData.reports.length){
+    list.innerHTML=`<div class="card empty"><div class="empty-icon">📋</div><div class="empty-title">Noch keine Einträge</div><div class="empty-sub">Erstelle deinen ersten Ausbildungsnachweis</div><button class="btn btn-primary" onclick="newReport()">+ Erste Woche anlegen</button></div>`;
+    return;
+  }
+  list.innerHTML=[...appData.reports].reverse().map(r=>{
+    const filled=r.notes&&r.notes.some(n=>n&&n.trim());
+    return `<div class="card-hover" onclick="openReport('${r.id}')"><div class="report-row"><div class="report-num-badge"><span>#${r.reportNum}</span></div><div class="report-info"><div class="report-title">Ausbildungsnachweis Nr. ${r.reportNum}</div><div class="report-meta">KW ${r.kw} · ${r.name}</div></div><div class="report-actions"><span class="badge ${filled?'badge-green':'badge-blue'}">${filled?'✓ Ausgefüllt':'Entwurf'}</span><button class="btn-ghost btn-red" onclick="deleteReport(event,'${r.id}')">✕</button></div></div></div>`;
+  }).join('');
+}
+function deleteReport(e,id){ e.stopPropagation(); if(!confirm('Löschen?'))return; appData.reports=appData.reports.filter(r=>r.id!==id); saveData(); renderOverview(); updateHeaderInfo(); }
+function openReport(id){ currentId=id; loadReportIntoEditor(appData.reports.find(r=>r.id===id)); showView('editor'); }
+function newReport(){
+  const num=appData.settings.lastNumber+1, mon=todayMonday();
+  const r={id:Date.now().toString(),reportNum:num,name:appData.settings.name,year:appData.settings.year,monday:mon,kw:getKW(mon),notes:Array(5).fill(''),locations:[...(appData.settings.locations||DEFAULT_LOCS)]};
+  appData.reports.push(r); appData.settings.lastNumber=num; saveData(); currentId=r.id; loadReportIntoEditor(r); showView('editor');
+}
+function getCurrentReport(){ return appData.reports.find(r=>r.id===currentId); }
+function loadReportIntoEditor(r){ document.getElementById('e-name').value=r.name||''; document.getElementById('e-year').value=r.year||''; document.getElementById('e-monday').value=r.monday||todayMonday(); updateEditorMeta(); renderDays(r); }
+function updateEditorMeta(){
+  const mon=document.getElementById('e-monday').value||todayMonday(), dates=weekDates(mon);
+  document.getElementById('editor-title').textContent='Ausbildungsnachweis Nr. '+(getCurrentReport()?.reportNum||'');
+  document.getElementById('editor-meta').textContent=`KW ${getKW(mon)} · ${fmtDE(dates[0])} – ${fmtDE(dates[4])}`;
+}
+function renderDays(r){
+  const mon=r.monday||todayMonday(), dates=weekDates(mon);
+  document.getElementById('days-container').innerHTML=dates.map((date,i)=>{
+    const isSchool=SCHOOL_DAYS.includes(i), note=(r.notes||[])[i]||'', loc=(r.locations||DEFAULT_LOCS)[i]||DEFAULT_LOCS[i];
+    return `<div class="day-row ${isSchool?'school':'work'}"><div class="day-header"><div><span class="day-name">${DAY_LABELS[i]}</span><span class="day-date">${fmtDE(date)}</span>${isSchool?'<span class="badge badge-purple" style="margin-left:8px">Berufsschule</span>':''}</div></div><div style="margin-bottom:10px"><label>Lernort</label><input type="text" class="small-input" id="loc-${i}" value="${escHtml(loc.replace(/\n/g,' · '))}" oninput="onLocChange(${i},this.value)"></div><label>Stichpunkte (eine pro Zeile)</label><textarea class="note-textarea" id="note-${i}" placeholder="${isSchool?'z.B. - Mathematik: Zinsrechnung':'z.B. - Kundenberatung'}" oninput="onNoteChange(${i},this.value)" rows="4">${escHtml(note)}</textarea></div>`;
+  }).join('');
+}
+function onNoteChange(i,val){ const r=getCurrentReport(); if(!r)return; if(!r.notes)r.notes=Array(5).fill(''); r.notes[i]=val; saveData(); }
+function onLocChange(i,val){ const r=getCurrentReport(); if(!r)return; if(!r.locations)r.locations=[...DEFAULT_LOCS]; r.locations[i]=val.replace(/ · /g,'\n'); saveData(); }
+function showError(msg){ const el=document.getElementById('editor-error'); el.textContent='⚠ '+msg; el.style.display=msg?'':'none'; }
+function setLoading(id,loading,label){ const btn=document.getElementById(id); if(!btn)return; btn.disabled=loading; btn.innerHTML=loading?`<span class="spinner"></span> ${label}`:label; }
+function saveCurrentReport(){
+  const r=getCurrentReport(); if(!r)return;
+  const mon=document.getElementById('e-monday').value||r.monday;
+  r.name=document.getElementById('e-name').value; r.year=document.getElementById('e-year').value;
+  r.monday=mon; r.kw=getKW(mon);
+  r.notes=Array.from({length:5},(_,i)=>document.getElementById('note-'+i)?.value||'');
+  r.locations=Array.from({length:5},(_,i)=>(document.getElementById('loc-'+i)?.value||'').replace(/ · /g,'\n'));
+  saveData(); updateHeaderInfo();
+  const btn=document.getElementById('save-btn'); btn.textContent='✓ Gespeichert'; setTimeout(()=>btn.textContent='Speichern',2000);
+}
+function exportPDF(){
+  saveCurrentReport(); const r=getCurrentReport(); if(!r)return;
+  const mon=r.monday||todayMonday(), dates=weekDates(mon), kw=getKW(mon);
+  const html=`<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>Ausbildungsnachweis Nr. ${r.reportNum}</title><style>@page{size:A4;margin:1.5cm}body{font-family:Arial,sans-serif;font-size:10pt;color:#000;margin:0}h2{font-size:13pt;margin:0 0 10px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:5px 7px;vertical-align:top;font-size:9.5pt}th{background:#e8eef4;font-weight:bold}.sig td{height:60px;font-size:8.5pt}</style></head><body><h2>Ausbildungsnachweis Nr. ${r.reportNum}</h2><table><tr><th>Name, Vorname</th><th>Ausbildungsjahr</th><th>Monat</th><th>Woche</th></tr><tr><td>${r.name}</td><td>${r.year}</td><td>${getMonthNum(dates[0])} / ${getYear(dates[0])}</td><td>KW ${kw} / ${fmtShort(dates[0])} – ${fmtDE(dates[4])}</td></tr><tr><th colspan="3">Tätigkeit und Unterricht</th><th>Lernort</th></tr>${dates.map((d,i)=>`<tr><td colspan="3"><b>${fmtDE(d)}:</b><br>${(r.notes[i]||'').replace(/\n/g,'<br>')}</td><td style="font-size:8.5pt;text-align:center">${(r.locations[i]||DEFAULT_LOCS[i]).replace(/\n/g,'<br>')}</td></tr>`).join('')}<tr class="sig"><td>Auszubildender<br><i>(Unterschr./Dat.)</i></td><td>Ausbildender<br><i>(Prüfvermerk/Dat.)</i></td><td>Gesetzl. Vertr.<br><i>(Sichtvermerk/Dat.)</i></td><td>Berufsschule<br><i>(Sichtvermerk/Dat.)</i></td></tr></table></body></html>`;
+  const w=window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400);
+}
+
+// ─── DOCX Export ──────────────────────────────────────────────────────────────
+async function exportDOCX(){
+  saveCurrentReport();
+  const r=getCurrentReport(); if(!r)return;
+  showError('');
+  ['docx-btn','docx-btn2'].forEach(id=>setLoading(id,true,'Generiere…'));
+
+  try {
+    const {
+      Document, Packer, Paragraph, TextRun,
+      Table, TableRow, TableCell,
+      WidthType, BorderStyle, ShadingType,
+      AlignmentType, VerticalAlign
+    } = window.docx;
+
+    const mon   = r.monday||todayMonday();
+    const dates = weekDates(mon);
+    const kw    = getKW(mon);
+
+    // Rahmen
+    const B   = { style: BorderStyle.SINGLE, size: 4, color: '999999' };
+    const BRD = { top:B, bottom:B, left:B, right:B };
+    const M   = { top:80, bottom:80, left:120, right:120 };
+
+    const W     = 10800;        // Gesamtbreite
+    const W1=3800, W2=1600, W3=2600, W4=W-W1-W2-W3; // Kopfspalten
+    const W_LOC  = 2700;
+    const W_CONT = W - W_LOC;
+
+    function p(text, opts={}) {
+      return new Paragraph({
+        alignment: opts.center ? AlignmentType.CENTER : AlignmentType.LEFT,
+        spacing: { before:0, after:0 },
+        children: [new TextRun({
+          text:    String(text||''),
+          bold:    opts.bold   ||false,
+          italics: opts.italic ||false,
+          size:    opts.size   ||20,
+          font:    'Arial',
+        })]
+      });
+    }
+
+    function cell(paras, width, opts={}) {
+      return new TableCell({
+        borders:       BRD,
+        width:         { size: width, type: WidthType.DXA },
+        margins:       M,
+        verticalAlign: VerticalAlign.TOP,
+        columnSpan:    opts.span || undefined,
+        shading:       opts.shaded ? { fill:'E8EEF4', type:ShadingType.CLEAR, color:'auto' } : undefined,
+        children:      paras,
+      });
+    }
+
+    // ── Kopf-Tabelle (Name / Ausbildungsjahr / Monat / Woche) ────────────────
+    const headerTable = new Table({
+      width: { size: W, type: WidthType.DXA },
+      rows: [
+        new TableRow({ children: [
+          cell([p('Name, Vorname',   {bold:true})], W1, {shaded:true}),
+          cell([p('Ausbildungsjahr', {bold:true})], W2, {shaded:true}),
+          cell([p('Monat',           {bold:true})], W3, {shaded:true}),
+          cell([p('Woche',           {bold:true})], W4, {shaded:true}),
+        ]}),
+        new TableRow({ children: [
+          cell([p(r.name)], W1),
+          // Erstes / 2026 in einer Zeile
+          cell([p(`${r.year || 'Erstes / 2026'}`)], W2),
+          // Monat / Jahr in einer Zeile, z.B. 06 / 2026
+          cell([p(`${String(getMonthNum(dates[0])).padStart(2,'0')} / ${getYear(dates[0])}`)], W3),
+          // KW + Datum von/bis
+          cell([p(`KW ${kw} / ${fmtDE(dates[0])} – ${fmtDE(dates[4])}`)], W4),
+        ]}),
+      ]
+    });
+
+    // ── Haupt-Tabelle (Tätigkeit / Lernort + Tage) ───────────────────────────
+    const headerRow = new TableRow({ children: [
+      cell([p('Tätigkeit und Unterricht',{bold:true})], W_CONT, {shaded:true}),
+      cell([p('Lernort',                 {bold:true})], W_LOC,  {shaded:true}),
+    ]});
+
+    const dateRangeRow = new TableRow({ children: [
+      cell([p(`${fmtShort(dates[0])} – ${fmtDE(dates[4])}`,{bold:true})], W_CONT),
+      cell([p('')], W_LOC),
+    ]});
+
+    const dayRows = dates.map((d,i) => {
+      const noteText = (r.notes?.[i]||'').trim();
+      const locText  = (r.locations?.[i]||DEFAULT_LOCS[i])||'';
+      return new TableRow({ children: [
+        cell([
+          p(fmtDE(d)+':',{bold:true}),
+          ...noteText.split('\n').map(l=>l.trim()).filter(l=>l).map(l=>p(l)),
+          p(' ')
+        ], W_CONT),
+        cell(
+          locText.split('\n').map(l=>p(l,{center:true})),
+          W_LOC
+        ),
+      ]});
+    });
+
+    const mainTable = new Table({
+      width: { size: W, type: WidthType.DXA },
+      rows:  [ headerRow, dateRangeRow, ...dayRows ],
+    });
+
+    // ── Unterschriften-Tabelle als eigene Tabelle ────────────────────────────
+    const W_SIG = Math.floor(W/4);
+    function sigCell(label, sub) {
+      return new TableCell({
+        borders: BRD,
+        width:   { size: W_SIG, type: WidthType.DXA },
+        margins: M,
+        children: [
+          p(label, {bold:true, size:18}),
+          p(sub,   {italic:true, size:16}),
+          p(' ',   {size:40}),
+          p(' ',   {size:40}),
+        ],
+      });
+    }
+
+    const sigTable = new Table({
+      width: { size: W, type: WidthType.DXA },
+      rows: [
+        new TableRow({ children: [
+          sigCell('Auszubildender',  '(Unterschr./Dat.)'),
+          sigCell('Ausbildender',    '(Prüfvermerk/Dat.)'),
+          sigCell('Gesetzl. Vertr.', '(Sichtvermerk/Dat.)'),
+          sigCell('Berufsschule',    '(Sichtvermerk/Dat.)'),
+        ]})
+      ]
+    });
+
+    // ── Dokument ──────────────────────────────────────────────────────────────
+    const doc = new Document({
+      styles: { default: { document: { run: { font:'Arial', size:20 } } } },
+      sections: [{
+        properties: {
+          page: {
+            size:   { width:11906, height:16838 },
+            margin: { top:720, right:720, bottom:720, left:720 },
+          }
+        },
+        children: [
+          p(`Ausbildungsnachweis Nr. ${r.reportNum}`, {bold:true, size:26}),
+          new Paragraph({ children:[], spacing:{after:120} }),
+          headerTable,
+          new Paragraph({ children:[], spacing:{after:120} }),
+          mainTable,
+          new Paragraph({ children:[], spacing:{after:120} }),
+          sigTable,
+        ]
+      }]
+    });
+
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, `Ausbildungsnachweis_Nr${r.reportNum}.docx`);
+
+  } catch(e) {
+    showError('DOCX-Export fehlgeschlagen: '+e.message);
+    console.error(e);
+  }
+
+  ['docx-btn','docx-btn2'].forEach(id=>setLoading(id,false,'↓ .docx'));
+  const b2=document.getElementById('docx-btn2'); if(b2) b2.innerHTML='↓ Als Word exportieren';
+}
+
+
+function renderSettings(){
+  document.getElementById('s-name').value     = appData.settings.name||'';
+  document.getElementById('s-year').value     = appData.settings.year||'';
+  document.getElementById('s-last-num').value = appData.settings.lastNumber||0;
+  document.getElementById('s-locations').innerHTML = DAY_LABELS.map((d,i)=>`
+    <div style="margin-bottom:10px"><label>${d}</label>
+    <input type="text" id="sloc-${i}" class="small-input" value="${escHtml((appData.settings.locations||DEFAULT_LOCS)[i].replace(/\n/g,' · '))}">
+    </div>`).join('');
+}
+function saveSettings(){
+  appData.settings.name       = document.getElementById('s-name').value;
+  appData.settings.year       = document.getElementById('s-year').value;
+  appData.settings.lastNumber = parseInt(document.getElementById('s-last-num').value)||0;
+  appData.settings.locations  = Array.from({length:5},(_,i)=>(document.getElementById('sloc-'+i)?.value||'').replace(/ · /g,'\n'));
+  saveData(); updateHeaderInfo();
+  const btn=document.getElementById('settings-save-btn'); btn.textContent='✓ Gespeichert'; setTimeout(()=>btn.textContent='Speichern',2000);
+}
+
+renderOverview();
+updateHeaderInfo();
+</script>
+</body>
+</html>
